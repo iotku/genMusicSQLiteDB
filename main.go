@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/dhowden/tag"
 	_ "github.com/mattn/go-sqlite3"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -23,7 +24,7 @@ func main() {
 	var database *sql.DB // Closed by scan/compare functions, I think. (unclear, but seems functional)
 
 	if _, err := os.Stat(dbfile); os.IsNotExist(err) {
-		// File doesn't exist, so do full DB run without comparision
+		// File doesn't exist, so do full DB run without comparison
 		fmt.Println("Generate DB")
 		sqltx, database = InitDB(dbfile)
 		fullScan(path, sqltx)
@@ -77,15 +78,22 @@ func fullScan(path string, tx *sql.Tx) {
 	stmt := PrepareStatementInsert(tx)
 	defer stmt.Close()
 
-	currentFiles := scanFiles(path)
-	for _, v := range currentFiles {
-		tags, err := getTags(v)
-		if tags == nil {
-			errorednum++
-			printStatus("Error", err.Error()+" "+path)
-			continue
+	err := filepath.WalkDir(path, func(path string, info fs.DirEntry, err error) error {
+		if filepath.Ext(path) == ".flac" {
+			tags, err := getTags(path)
+			if tags == nil {
+				errorednum++
+				printStatus("Error", err.Error()+" "+path)
+				return nil
+			} else {
+				addPathToDB(tags, stmt)
+			}
 		}
-		addPathToDB(tags, stmt)
+		return nil
+	})
+
+	if err != nil {
+		fmt.Println(err.Error())
 	}
 }
 
