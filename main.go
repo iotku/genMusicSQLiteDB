@@ -100,7 +100,7 @@ func fullScan(path string, tx *sql.Tx) {
 // Recursively scan path for files to be added or compared to database
 func scanFiles(path string) []string {
 	var fileList []string
-	err := filepath.Walk(path, func(path string, f os.FileInfo, err error) error {
+	err := filepath.WalkDir(path, func(path string, info fs.DirEntry, err error) error {
 		if filepath.Ext(path) == ".flac" {
 			fileList = append(fileList, path)
 		}
