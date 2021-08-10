@@ -4,35 +4,24 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
-	"github.com/dhowden/tag"
 	_ "github.com/mattn/go-sqlite3"
-	"io/fs"
 	"log"
 	"os"
-	"path/filepath"
 )
 
 var dbfile = "./media.db"
-var processednum = 0
-var errorednum = 0
-var removednum = 0
-
-func isValidExt(ext string) bool {
-	// Tag doesn't currently work with opus files.
-	// https://github.com/dhowden/tag/pull/69
-	return ext == ".flac" || ext == ".mp3"
-}
 
 func main() {
 	flag.Parse()
 	path := flag.Arg(0)
+
 	var sqltx *sql.Tx
 	var database *sql.DB // Closed by scan/compare functions, I think. (unclear, but seems functional)
 
 	if _, err := os.Stat(dbfile); os.IsNotExist(err) {
 		// File doesn't exist, so do full DB run without comparison
 		fmt.Println("Generate DB")
-		sqltx, database = InitDB(dbfile)
+		sqltx, database = InitDB(dbfile, "music", "artist", "album", "title")
 		fullScan(path, sqltx)
 	} else {
 		database = openDB(dbfile)
@@ -58,95 +47,12 @@ func main() {
 	return
 }
 
-func openDB(dbfile string) *sql.DB {
-	database, err := sql.Open("sqlite3", dbfile)
-	checkErr(err)
-	return database
-}
-
-func PrepareStatementInsert(tx *sql.Tx) *sql.Stmt {
-	stmt, err := tx.Prepare(`INSERT INTO "music" (artist, album, title, path) VALUES (?, ?, ?, ?);`)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return stmt
-}
-
-func PrepareStatementRemove(tx *sql.Tx) *sql.Stmt {
-	stmt, err := tx.Prepare(`DELETE FROM music WHERE path = ?`)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return stmt
-}
-
-func fullScan(path string, tx *sql.Tx) {
-	stmt := PrepareStatementInsert(tx)
-	defer stmt.Close()
-
-	err := filepath.WalkDir(path, func(path string, info fs.DirEntry, err error) error {
-		if isValidExt(filepath.Ext(path)) {
-			tags, err := getTags(path)
-			if tags == nil {
-				errorednum++
-				printStatus("Error", err.Error()+" "+path)
-				return nil
-			} else {
-				addPathToDB(tags, stmt)
-			}
-		}
-		return nil
-	})
-
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-}
-
-// Recursively scan path for files to be added or compared to database
-func scanFiles(path string) []string {
-	var fileList []string
-	err := filepath.WalkDir(path, func(path string, info fs.DirEntry, err error) error {
-		if isValidExt(filepath.Ext(path)) {
-			fileList = append(fileList, path)
-		}
-		return nil
-	})
-
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-	return fileList
-}
-
-func getTags(path string) (map[string]string, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		log.Println("Tag couldn't open path:", path)
-		return nil, err
-	}
-	m, err := tag.ReadFrom(f)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	metadata := map[string]string{
-		"artist": m.Artist(),
-		"album":  m.Album(),
-		"title":  m.Title(),
-		"path":   path,
-	}
-
-	return metadata, nil
-}
-
 func compareDatabase(path string, database *sql.DB, tx *sql.Tx) {
 	stmt := PrepareStatementInsert(tx)
 	defer stmt.Close()
 
 	// Is there a good way to do the comparison during the scan?
-	currentFiles := scanFiles(path)
+	currentFiles := scanDir(path)
 
 	var previousFiles []string
 	previousFiles = loadOldFilesList(database)
@@ -182,47 +88,7 @@ func checkErr(err error) {
 	}
 }
 
-func InitDB(dbfile string) (*sql.Tx, *sql.DB) {
-	var db *sql.DB
-	db, err := sql.Open("sqlite3", dbfile)
 
-	checkErr(err)
-
-	ddl := `
-	       PRAGMA automatic_index = ON;
-	       PRAGMA cache_size = 32768;
-	       PRAGMA cache_spill = OFF;
-	       PRAGMA foreign_keys = ON;
-	       PRAGMA journal_size_limit = 67110000;
-	       PRAGMA locking_mode = NORMAL;
-	       PRAGMA page_size = 4096;
-	       PRAGMA recursive_triggers = ON;
-	       PRAGMA secure_delete = OFF;
-	       PRAGMA synchronous = OFF;
-	       PRAGMA temp_store = MEMORY;
-	       PRAGMA journal_mode = OFF;
-	       PRAGMA wal_autocheckpoint = 16384;
-	       CREATE TABLE IF NOT EXISTS "music" (
-	           "artist" TEXT NOT NULL,
-	           "album" TEXT NOT NULL,
-	           "title" TEXT NOT NULL,
-	           "path" TEXT NOT NULL
-	       );
-	       CREATE UNIQUE INDEX IF NOT EXISTS "path" ON "music" ("path");
-	   `
-
-	_, err = db.Exec(ddl)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	tx, err := db.Begin()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return tx, db
-}
 
 // Return the difference between two []string slices, TODO: is there a faster method?
 func difference(a, b []string) []string {
