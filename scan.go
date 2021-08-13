@@ -16,7 +16,7 @@ var errorednum = 0
 var removednum = 0
 
 func fullScan(path string, tx *sql.Tx) {
-	stmt := PrepareStatementInsert(tx)
+	stmt := PrepareStatementInsert(tx, "music","artist", "album", "title", "path")
 	defer stmt.Close()
 
 	err := filepath.WalkDir(path, func(path string, info fs.DirEntry, err error) error {
@@ -74,6 +74,57 @@ func getTags(path string) (map[string]string, error) {
 	}
 
 	return metadata, nil
+}
+
+func compareDatabase(path string, database *sql.DB, tx *sql.Tx) {
+	stmt := PrepareStatementInsert(tx, "music", "artist", "album", "title", "path")
+	defer stmt.Close()
+
+	// Is there a good way to do the comparison during the scan?
+	currentFiles := scanDir(path)
+
+	var previousFiles []string
+	previousFiles = loadOldFilesList(database)
+
+	// Add these files
+	filesToAdd := difference(currentFiles, previousFiles)
+
+	for _, file := range filesToAdd {
+		tags, err := getTags(file)
+		if tags == nil {
+			errorednum++
+			printStatus("Error", err.Error()+" "+file)
+			continue
+		}
+		addPathToDB(tags, stmt)
+	}
+
+	// remove these
+	stmt = PrepareStatementRemove(tx, "music")
+	filesToRemove := difference(previousFiles, currentFiles)
+
+	for _, file := range filesToRemove {
+		fmt.Println(file)
+		removePathFromDB(file, stmt)
+	}
+
+	fmt.Printf("\n%d:%d\n", len(currentFiles), len(previousFiles))
+}
+
+func loadOldFilesList(database *sql.DB) []string {
+	var files []string
+
+	rows, err := database.Query("SELECT path FROM music")
+	//defer rows.Close()
+	checkErr(err)
+
+	var path string
+	for rows.Next() {
+		err := rows.Scan(&path)
+		files = append(files, path)
+		checkErr(err)
+	}
+	return files
 }
 
 func isValidExt(ext string) bool {

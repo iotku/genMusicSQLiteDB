@@ -2,12 +2,16 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 )
 
 // InitDB creates a new sqlite database with provided table containing provided columns
 // Note: path is hardcoded to exist so shouldn't be included in columns
 func InitDB(dbfile string, table string, columns ...string) (*sql.Tx, *sql.DB) {
+	if len(columns) < 1 {
+		log.Fatalln("InitDB() requires at least one column")
+	}
 	var db *sql.DB
 	db, err := sql.Open("sqlite3", dbfile)
 
@@ -58,6 +62,9 @@ func openDB(dbfile string) *sql.DB {
 
 // TODO: Consider filtering non alphabetical chars to avoid SQLi here (;?), although we assume trusted input
 func genInsertStr(table string, columns ...string) string {
+	if len(columns) < 1 {
+		log.Fatalln("genInsertStr() requires at least one column")
+	}
 	outstring := "INSERT into \"" + table + "\" ("
 	for _, value := range columns {
 		outstring += value + ", "
@@ -69,18 +76,39 @@ func genInsertStr(table string, columns ...string) string {
 	return outstring[0:len(outstring)-2] + ");"
 }
 
-func PrepareStatementInsert(tx *sql.Tx) *sql.Stmt {
-	stmt, err := tx.Prepare(genInsertStr("music", "artist", "album", "title", "path"))
+func PrepareStatementInsert(tx *sql.Tx, table string, columns ...string) *sql.Stmt {
+	stmt, err := tx.Prepare(genInsertStr(table, columns...))
 	if err != nil {
 		log.Fatal(err)
 	}
 	return stmt
 }
 
-func PrepareStatementRemove(tx *sql.Tx) *sql.Stmt {
-	stmt, err := tx.Prepare(`DELETE FROM music WHERE path = ?`)
+func PrepareStatementRemove(tx *sql.Tx, table string) *sql.Stmt {
+	stmt, err := tx.Prepare("DELETE FROM " + table + " WHERE path = ?")
 	if err != nil {
 		log.Fatal(err)
 	}
 	return stmt
+}
+
+func addPathToDB(metadata map[string]string, stmt *sql.Stmt) {
+	_, err := stmt.Exec(metadata["artist"], metadata["album"], metadata["title"], metadata["path"])
+	if err != nil {
+		// Early return if INSERT fails (hopefully because path already exists)
+		log.Println(err)
+		return
+	}
+	processednum++
+	printStatus("Added", metadata["path"])
+}
+
+func removePathFromDB(path string, stmt *sql.Stmt) {
+	_, err := stmt.Exec(path)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	removednum++
+	printStatus("Removed", path)
 }
