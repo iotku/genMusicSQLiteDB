@@ -25,12 +25,13 @@ func main() {
 		fullScan(path, sqlTx)
 	} else {
 		database = openDB(dbfile)
-		var count int
-		err = database.QueryRow("SELECT COUNT(*) FROM music").Scan(&count)
-		checkErr(err)
+
+		count := GetRowCount(database, "music")
 		fmt.Printf("DB Has %d Rows\n", count)
+
 		sqlTx, err = database.Begin()
-		checkErr(err)
+		checkErrFatal(err)
+
 		if count == 0 {
 			// Run full scan without checking database
 			fullScan(path, sqlTx)
@@ -41,16 +42,8 @@ func main() {
 	}
 
 	err := sqlTx.Commit()
-	if err != nil {
-		log.Fatal(err)
-	}
+	checkErrFatal(err)
 	return
-}
-
-func checkErr(err error) {
-	if err != nil {
-		panic(err)
-	}
 }
 
 // Return the difference between two []string slices, TODO: is there a faster method?
@@ -70,4 +63,11 @@ func difference(a, b []string) []string {
 
 func printStatus(action, path string) {
 	fmt.Printf("Added: %d Error: %d Removed: %d | %s: %s\n", processednum, errorednum, removednum, action, path)
+}
+
+// Log an error and terminate
+func checkErrFatal(err error) {
+	if err != nil {
+		log.Fatalln(err)
+	}
 }

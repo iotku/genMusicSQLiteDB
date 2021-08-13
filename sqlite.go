@@ -15,7 +15,7 @@ func InitDB(dbfile string, table string, columns ...string) (*sql.Tx, *sql.DB) {
 	var db *sql.DB
 	db, err := sql.Open("sqlite3", dbfile)
 
-	checkErr(err)
+	checkErrFatal(err)
 
 	ddl := `
 	       PRAGMA automatic_index = ON;
@@ -56,7 +56,7 @@ func InitDB(dbfile string, table string, columns ...string) (*sql.Tx, *sql.DB) {
 // Returns a *sql.DB struct
 func openDB(dbfile string) *sql.DB {
 	database, err := sql.Open("sqlite3", dbfile)
-	checkErr(err)
+	checkErrFatal(err)
 	return database
 }
 
@@ -111,4 +111,10 @@ func removePathFromDB(path string, stmt *sql.Stmt) {
 	}
 	removednum++
 	printStatus("Removed", path)
+}
+
+// GetRowCount returns amount of rows in a table
+func GetRowCount(database *sql.DB, table string) (count uint64) {
+	checkErrFatal(database.QueryRow("SELECT COUNT(*) FROM " + table).Scan(&count))
+	return
 }

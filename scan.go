@@ -116,13 +116,13 @@ func loadOldFilesList(database *sql.DB) []string {
 
 	rows, err := database.Query("SELECT path FROM music")
 	//defer rows.Close()
-	checkErr(err)
+	checkErrFatal(err)
 
 	var path string
 	for rows.Next() {
 		err := rows.Scan(&path)
 		files = append(files, path)
-		checkErr(err)
+		checkErrFatal(err)
 	}
 	return files
 }
