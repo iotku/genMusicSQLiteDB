@@ -64,7 +64,7 @@ func getTags(filePath string) (map[string]string, error) {
 
 	// Verify that our prefix has not changed after filepath has been cleaned
 	if !strings.HasPrefix(filePath, rootDir) {
-		log.Fatalln("getTags() Invalid path prefix at '" + filePath + "'doesn't have prefix '" + rootDir + "'")
+		panic(fmt.Errorf("getTags() Invalid path prefix at '" + filePath + "'doesn't have prefix '" + rootDir + "'"))
 	}
 
 	f, err := os.Open(filePath)
