@@ -10,10 +10,11 @@ import (
 )
 
 var dbfile = "./media.db"
+var rootDir string
 
 func main() {
 	flag.Parse()
-	path := flag.Arg(0)
+	rootDir = flag.Arg(0)
 
 	var sqlTx *sql.Tx
 	var database *sql.DB // Closed by scan/compare functions, I think. (unclear, but seems functional)
@@ -22,7 +23,7 @@ func main() {
 		// File doesn't exist, so do full DB run without comparison
 		fmt.Println("Generate DB")
 		sqlTx, database = InitDB(dbfile, "music", "artist", "album", "title")
-		fullScan(path, sqlTx)
+		fullScan(rootDir, sqlTx)
 	} else {
 		database = openDB(dbfile)
 
@@ -30,19 +31,18 @@ func main() {
 		fmt.Printf("DB Has %d Rows\n", count)
 
 		sqlTx, err = database.Begin()
-		checkErrFatal(err)
+		ckErrFatal(err)
 
 		if count == 0 {
 			// Run full scan without checking database
-			fullScan(path, sqlTx)
+			fullScan(rootDir, sqlTx)
 		} else {
 			// Run Comparison against recently added files
-			compareDatabase(path, database, sqlTx)
+			compareDatabase(rootDir, database, sqlTx)
 		}
 	}
 
-	err := sqlTx.Commit()
-	checkErrFatal(err)
+	ckErrFatal(sqlTx.Commit())
 	return
 }
 
@@ -66,7 +66,7 @@ func printStatus(action, path string) {
 }
 
 // Log an error and terminate
-func checkErrFatal(err error) {
+func ckErrFatal(err error) {
 	if err != nil {
 		log.Fatalln(err)
 	}

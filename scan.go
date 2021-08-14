@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 
@@ -15,11 +16,11 @@ var processednum = 0
 var errorednum = 0
 var removednum = 0
 
-func fullScan(path string, tx *sql.Tx) {
+func fullScan(rootDir string, tx *sql.Tx) {
 	stmt := PrepareStatementInsert(tx, "music","artist", "album", "title", "path")
 	defer stmt.Close()
 
-	err := filepath.WalkDir(path, func(path string, info fs.DirEntry, err error) error {
+	err := filepath.WalkDir(rootDir, func(path string, info fs.DirEntry, err error) error {
 		if isValidExt(filepath.Ext(path)) {
 			tags, err := getTags(path)
 			if tags == nil {
@@ -54,25 +55,38 @@ func scanDir(path string) []string {
 	return fileList
 }
 
-func getTags(path string) (map[string]string, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		log.Println("Tag couldn't open path:", path)
-		return nil, err
-	}
-	m, err := tag.ReadFrom(f)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
+func getTags(filePath string) (map[string]string, error) {
+	// Clean the filepath to make security scanner happy.
+	// Personally, I don't think this really matters given our use case as we don't accept arbitrary input remotely,
+	// however this may be a good idea regardless in case the scope changes at some point.
+	// TODO: Investigate if performance impact is non-negligible
+	filePath = filepath.Clean(filePath)
 
+	// Verify that our prefix has not changed after filepath has been cleaned
+	if !strings.HasPrefix(filePath, rootDir) {
+		log.Fatalln("getTags() Invalid path prefix at '" + filePath + "'doesn't have prefix '" + rootDir + "'")
+	}
+
+	f, err := os.Open(filePath)
+	if err != nil {
+		log.Println("Tag couldn't open filePath:", filePath)
+		return nil, err
+	}
+
+	meta, err := tag.ReadFrom(f)
+	if err != nil {
+		ckErrFatal(f.Close())
+		return nil, err
+	}
+	ckErrFatal(f.Close())
+
+	// TODO: Maybe consider just using a standard slice instead?
 	metadata := map[string]string{
-		"artist": m.Artist(),
-		"album":  m.Album(),
-		"title":  m.Title(),
-		"path":   path,
+		"artist": meta.Artist(),
+		"album":  meta.Album(),
+		"title":  meta.Title(),
+		"path":   filePath,
 	}
-
 	return metadata, nil
 }
 
@@ -116,13 +130,13 @@ func loadOldFilesList(database *sql.DB) []string {
 
 	rows, err := database.Query("SELECT path FROM music")
 	//defer rows.Close()
-	checkErrFatal(err)
+	ckErrFatal(err)
 
 	var path string
 	for rows.Next() {
 		err := rows.Scan(&path)
 		files = append(files, path)
-		checkErrFatal(err)
+		ckErrFatal(err)
 	}
 	return files
 }
