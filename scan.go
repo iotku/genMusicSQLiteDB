@@ -3,21 +3,20 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"github.com/dhowden/tag"
 	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
-)
 
+	"github.com/dhowden/tag"
+)
 
 var processednum = 0
 var errorednum = 0
 var removednum = 0
 
 func fullScan(rootDir string, tx *sql.Tx) {
-	stmt := PrepareStatementInsert(tx, "music","artist", "album", "title", "path")
+	stmt := PrepareStatementInsert(tx, "music", "artist", "album", "title", "path")
 	defer stmt.Close()
 
 	err := filepath.WalkDir(rootDir, func(path string, info fs.DirEntry, err error) error {
@@ -60,12 +59,12 @@ func getTags(filePath string) (map[string]string, error) {
 	// Personally, I don't think this really matters given our use case as we don't accept arbitrary input remotely,
 	// however this may be a good idea regardless in case the scope changes at some point.
 	// TODO: Investigate if performance impact is non-negligible
-	filePath = filepath.Clean(filePath)
+	//filePath = filepath.Clean(filePath)
 
 	// Verify that our prefix has not changed after filepath has been cleaned
-	if !strings.HasPrefix(filePath, rootDir) {
-		panic(fmt.Errorf("getTags() Invalid path prefix at '" + filePath + "'doesn't have prefix '" + rootDir + "'"))
-	}
+	//	if !strings.HasPrefix(filePath, rootDir) {
+	//		panic(fmt.Errorf("getTags() Invalid path prefix at '" + filePath + "'doesn't have prefix '" + rootDir + "'"))
+	//	}
 
 	f, err := os.Open(filePath)
 	if err != nil {
