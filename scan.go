@@ -105,6 +105,7 @@ func compareDatabase(path string, database *sql.DB, tx *sql.Tx) {
 	filesToAdd := difference(currentFiles, previousFiles)
 
 	for _, file := range filesToAdd {
+		file = getOriginalFile(file)
 		tags, err := getTags(file)
 		if tags == nil {
 			errorednum++

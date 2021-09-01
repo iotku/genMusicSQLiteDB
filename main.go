@@ -7,6 +7,8 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"log"
 	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -92,4 +94,10 @@ func ckErrFatal(err error) {
 
 func addPrefixAndTrim(filePath string) string {
 	return prefix + filePath[trimAmt:]
+}
+
+func getOriginalFile(path string) string {
+	// Match everything before (and including) the base dir of the rootDir
+	var re = regexp.MustCompile(`(?m).*`+filepath.Base(rootDir))
+	return rootDir[:len(rootDir)-1] + re.ReplaceAllString(path, "")
 }
