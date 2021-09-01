@@ -7,8 +7,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"log"
 	"os"
-	"path/filepath"
-	"regexp"
 	"strings"
 )
 
@@ -16,6 +14,7 @@ var dbfile = "./media.db"
 var rootDir string
 var trimAmt int
 var prefix string
+var dirAmnt int
 
 func main() {
 	prefixPtr := flag.String("prefix", "", "Add a prefix to the path (For example, if you would rather have /Music -> /nas/Music you would use -prefix=/nas")
@@ -35,6 +34,9 @@ func main() {
 	} else {
 		log.Fatalln("Invalid trim argument, must match beginning of path \"" + rootDir + "\"")
 	}
+
+	// Determine how many characters to trim from new prefix to assist in getting original path
+	dirAmnt = len(addPrefixAndTrim(rootDir))
 
 	var sqlTx *sql.Tx
 	var database *sql.DB // Closed by scan/compare functions, I think. (unclear, but seems functional)
@@ -97,7 +99,5 @@ func addPrefixAndTrim(filePath string) string {
 }
 
 func getOriginalFile(path string) string {
-	// Match everything before (and including) the base dir of the rootDir
-	var re = regexp.MustCompile(`(?m).*`+filepath.Base(rootDir))
-	return rootDir[:len(rootDir)-1] + re.ReplaceAllString(path, "")
+	return rootDir[:len(rootDir)] + path[dirAmnt:]
 }
