@@ -7,14 +7,32 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"log"
 	"os"
+	"strings"
 )
 
 var dbfile = "./media.db"
 var rootDir string
+var trimAmt int
+var prefix string
 
 func main() {
+	prefixPtr := flag.String("prefix", "", "Add a prefix to the path (For example, if you would rather have /Music -> /nas/Music you would use -prefix=/nas")
+	trimPtr := flag.String("trim", "", "Trim the provided characters from the beginning of the path. (For example, if you wanted to change /mnt/Music -> /Music you would provide -trim=/mnt)")
 	flag.Parse()
-	rootDir = flag.Arg(0)
+	if len(flag.Args()) < 1 {
+		// showHelp()
+		log.Fatalln("You must provide a path, exiting.")
+	}
+	rootDir = flag.Args()[0]
+	fmt.Println("Prefix: " + *prefixPtr)
+	prefix = *prefixPtr
+
+	fmt.Println("Trim: " + *trimPtr)
+	if strings.HasPrefix(rootDir, *trimPtr) {
+		trimAmt = len(*trimPtr)
+	} else {
+		log.Fatalln("Invalid trim argument, must match beginning of path \"" + rootDir + "\"")
+	}
 
 	var sqlTx *sql.Tx
 	var database *sql.DB // Closed by scan/compare functions, I think. (unclear, but seems functional)
@@ -70,4 +88,8 @@ func ckErrFatal(err error) {
 	if err != nil {
 		log.Fatalln(err)
 	}
+}
+
+func addPrefixAndTrim(filePath string) string {
+	return prefix + filePath[trimAmt:]
 }

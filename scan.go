@@ -39,11 +39,12 @@ func fullScan(rootDir string, tx *sql.Tx) {
 }
 
 // Recursively scan path for files to be added or compared to database
-func scanDir(path string) []string {
+// Notably this does not read tags, but rather produces a file list for comparisons.
+func scanPath(path string) []string {
 	var fileList []string
 	err := filepath.WalkDir(path, func(path string, info fs.DirEntry, err error) error {
 		if isValidExt(filepath.Ext(path)) {
-			fileList = append(fileList, path)
+			fileList = append(fileList, addPrefixAndTrim(path))
 		}
 		return nil
 	})
@@ -78,6 +79,7 @@ func getTags(filePath string) (map[string]string, error) {
 		return nil, err
 	}
 	ckErrFatal(f.Close())
+	filePath = addPrefixAndTrim(filePath)
 
 	// TODO: Maybe consider just using a standard slice instead?
 	metadata := map[string]string{
@@ -94,7 +96,7 @@ func compareDatabase(path string, database *sql.DB, tx *sql.Tx) {
 	defer stmt.Close()
 
 	// Is there a good way to do the comparison during the scan?
-	currentFiles := scanDir(path)
+	currentFiles := scanPath(path)
 
 	var previousFiles []string
 	previousFiles = loadOldFilesList(database)
