@@ -21,9 +21,9 @@ func main() {
 	trimPtr := flag.String("trim", "", "Trim the provided characters from the beginning of the path. (For example, if you wanted to change /mnt/Music -> /Music you would provide -trim=/mnt)")
 	flag.Parse()
 	if len(flag.Args()) < 1 {
-		// showHelp()
+        showHelp()
 		log.Fatalln("You must provide a path, exiting.")
-	}
+    }
 	rootDir = flag.Args()[0]
 	fmt.Println("Prefix: " + *prefixPtr)
 	prefix = *prefixPtr
@@ -99,5 +99,12 @@ func addPrefixAndTrim(filePath string) string {
 }
 
 func getOriginalFile(path string) string {
-	return rootDir[:len(rootDir)] + path[dirAmnt:]
+	return rootDir + path[dirAmnt:]
+}
+
+func showHelp() {
+    fmt.Println("genMusicSQLDB vDev")
+    fmt.Println("Usage: genMusicSQLiteDB [-option=value] directory")
+    fmt.Println("Options");
+    flag.PrintDefaults()
 }
