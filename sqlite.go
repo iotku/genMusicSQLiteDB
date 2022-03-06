@@ -85,6 +85,7 @@ func PrepareStatementInsert(tx *sql.Tx, table string, columns ...string) *sql.St
 }
 
 func PrepareStatementRemove(tx *sql.Tx, table string) *sql.Stmt {
+    //nosec G202 -- Table and column names are considered "trusted" data
 	stmt, err := tx.Prepare("DELETE FROM " + table + " WHERE path = ?")
 	if err != nil {
 		log.Fatal(err)
