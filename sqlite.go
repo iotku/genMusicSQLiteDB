@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+
+	"github.com/dhowden/tag"
 )
 
 // InitDB creates a new sqlite database with provided table containing provided columns
@@ -37,7 +39,7 @@ func InitDB(dbfile string, table string, columns ...string) (*sql.Tx, *sql.DB) {
 		ddl += "           \"" + col + "\" TEXT NOT NULL,"
 	}
 	ddl += "\"path\" TEXT NOT NULL);"
-    ddl += "CREATE UNIQUE INDEX IF NOT EXISTS \"path\" ON \"" + table + "\" (\"path\");"
+	ddl += "CREATE UNIQUE INDEX IF NOT EXISTS \"path\" ON \"" + table + "\" (\"path\");"
 
 	_, err = db.Exec(ddl)
 	if err != nil {
@@ -85,7 +87,7 @@ func PrepareStatementInsert(tx *sql.Tx, table string, columns ...string) *sql.St
 }
 
 func PrepareStatementRemove(tx *sql.Tx, table string) *sql.Stmt {
-    //#nosec G202 -- Table and column names are considered "trusted" data
+	//#nosec G202 -- Table and column names are considered "trusted" data
 	stmt, err := tx.Prepare("DELETE FROM " + table + " WHERE path = ?")
 	if err != nil {
 		log.Fatal(err)
@@ -93,15 +95,14 @@ func PrepareStatementRemove(tx *sql.Tx, table string) *sql.Stmt {
 	return stmt
 }
 
-func addPathToDB(metadata map[string]string, stmt *sql.Stmt) {
-	_, err := stmt.Exec(metadata["artist"], metadata["album"], metadata["title"], metadata["path"])
+func addPathToDB(metadata tag.Metadata, path string, stmt *sql.Stmt) {
+	_, err := stmt.Exec(metadata.Artist(), metadata.Album(), metadata.Title(), path)
 	if err != nil {
-		// Early return if INSERT fails (hopefully because path already exists)
 		log.Println(err)
-		return
+		return // Early return if INSERT fails (hopefully because path already exists)
 	}
 	processednum++
-	printStatus("Added", metadata["path"])
+	printStatus("Added", path)
 }
 
 func removePathFromDB(path string, stmt *sql.Stmt) {

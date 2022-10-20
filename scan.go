@@ -27,7 +27,7 @@ func fullScan(rootDir string, tx *sql.Tx) {
 				printStatus("Error", err.Error()+" "+path)
 				return nil
 			} else {
-				addPathToDB(tags, stmt)
+				addPathToDB(tags, path, stmt)
 			}
 		}
 		return nil
@@ -55,7 +55,7 @@ func scanPath(path string) []string {
 	return fileList
 }
 
-func getTags(filePath string) (map[string]string, error) {
+func getTags(filePath string) (tag.Metadata, error) {
 	// Clean the filepath to make security scanner happy.
 	// Personally, I don't think this really matters given our use case as we don't accept arbitrary input remotely,
 	// however this may be a good idea regardless in case the scope changes at some point.
@@ -81,14 +81,7 @@ func getTags(filePath string) (map[string]string, error) {
 	ckErrFatal(f.Close())
 	filePath = addPrefixAndTrim(filePath)
 
-	// TODO: Maybe consider just using a standard slice instead?
-	metadata := map[string]string{
-		"artist": meta.Artist(),
-		"album":  meta.Album(),
-		"title":  meta.Title(),
-		"path":   filePath,
-	}
-	return metadata, nil
+	return meta, nil
 }
 
 func compareDatabase(path string, database *sql.DB, tx *sql.Tx) {
@@ -112,7 +105,7 @@ func compareDatabase(path string, database *sql.DB, tx *sql.Tx) {
 			printStatus("Error", err.Error()+" "+file)
 			continue
 		}
-		addPathToDB(tags, stmt)
+		addPathToDB(tags, file, stmt)
 	}
 
 	// remove these
