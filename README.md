@@ -15,4 +15,4 @@ sqlite3 driver: https://github.com/mattn/go-sqlite3 (requires gcc)
 This creates a media.db (Currently hardcoded filename) containing 4 colums ("artist", "album", "title", "path")
 
 ### Supported Formats
-Currently genMusicSQLiteDB program looks for .flac & .mp3 files. Thusfar we have no ability to scan tags for opus files.
+Currently genMusicSQLiteDB program looks for .flac/.mp3/.opus files.
