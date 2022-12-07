@@ -137,7 +137,5 @@ func loadOldFilesList(database *sql.DB) []string {
 }
 
 func isValidExt(ext string) bool {
-	// Tag doesn't currently work with opus files.
-	// https://github.com/dhowden/tag/pull/69
-	return ext == ".flac" || ext == ".mp3"
+	return ext == ".flac" || ext == ".mp3" || ext == ".opus"
 }
