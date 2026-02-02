@@ -4,16 +4,17 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
-	_ "github.com/mattn/go-sqlite3"
 	"log"
 	"os"
 	"strings"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 var dbfile = "./media.db"
 var rootDir string
-var trimAmt int
 var prefix string
+var trimStr string
 var dirAmnt int
 
 func main() {
@@ -21,16 +22,16 @@ func main() {
 	trimPtr := flag.String("trim", "", "Trim the provided characters from the beginning of the path. (For example, if you wanted to change /mnt/Music -> /Music you would provide -trim=/mnt)")
 	flag.Parse()
 	if len(flag.Args()) < 1 {
-        showHelp()
+		showHelp()
 		log.Fatalln("You must provide a path, exiting.")
-    }
+	}
 	rootDir = flag.Args()[0]
 	fmt.Println("Prefix: " + *prefixPtr)
 	prefix = *prefixPtr
 
 	fmt.Println("Trim: " + *trimPtr)
 	if strings.HasPrefix(rootDir, *trimPtr) {
-		trimAmt = len(*trimPtr)
+		trimStr = *trimPtr
 	} else {
 		log.Fatalln("Invalid trim argument, must match beginning of path \"" + rootDir + "\"")
 	}
@@ -95,7 +96,7 @@ func ckErrFatal(err error) {
 }
 
 func addPrefixAndTrim(filePath string) string {
-	return prefix + filePath[trimAmt:]
+	return prefix + strings.TrimPrefix(filePath, trimStr)
 }
 
 func getOriginalFile(path string) string {
@@ -103,8 +104,8 @@ func getOriginalFile(path string) string {
 }
 
 func showHelp() {
-    fmt.Println("genMusicSQLDB vDev")
-    fmt.Println("Usage: genMusicSQLiteDB [-option=value] directory")
-    fmt.Println("Options");
-    flag.PrintDefaults()
+	fmt.Println("genMusicSQLDB vDev")
+	fmt.Println("Usage: genMusicSQLiteDB [-option=value] directory")
+	fmt.Println("Options")
+	flag.PrintDefaults()
 }

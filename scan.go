@@ -27,7 +27,7 @@ func fullScan(rootDir string, tx *sql.Tx) {
 				printStatus("Error", err.Error()+" "+path)
 				return nil
 			} else {
-				addPathToDB(tags, path, stmt)
+				addPathToDB(tags, addPrefixAndTrim(path), stmt)
 			}
 		}
 		return nil
